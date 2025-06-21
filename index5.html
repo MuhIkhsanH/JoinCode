@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gabung Kode Upload</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6 font-sans">
+
+  <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
+    <h1 class="text-2xl font-bold text-red-600 mb-4">📤 Upload File</h1>
+
+    <input id="fileInput" type="file" multiple class="mb-4 block" />
+    
+    <div id="fileList" class="space-y-2 mb-2"></div>
+
+    <!-- Tombol Pilih Semua & Hilangkan Pilihan -->
+    <div class="flex gap-2 mb-4">
+      <button onclick="selectAllFiles()" class="text-sm bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded">
+        ✔️ Pilih Semua
+      </button>
+      <button onclick="deselectAllFiles()" class="text-sm bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded">
+        ❌ Hilangkan Pilihan
+      </button>
+    </div>
+
+    <button onclick="showSelectedFiles()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+      📄 Tampilkan Gabungan Kode
+    </button>
+
+    <div id="result" class="mt-6 hidden">
+      <h2 class="text-xl font-semibold mb-2">🧾 Gabungan Semua Kode:</h2>
+      <textarea id="outputArea" class="w-full min-h-[400px] bg-gray-100 border border-gray-300 rounded p-4 text-sm font-mono whitespace-pre-wrap resize-y"></textarea>
+      <button onclick="copyToClipboard('outputArea')" class="mt-3 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+        📋 Copy Semua
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let selectedFiles = [];
+    let fileMap = new Map();
+
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+      const newFiles = Array.from(event.target.files);
+      const fileList = document.getElementById('fileList');
+      event.target.value = ''; // reset biar bisa pilih file yang sama lagi
+
+      newFiles.forEach(file => {
+        const alreadyExists = selectedFiles.find(f => f.name === file.name && f.size === file.size);
+        if (!alreadyExists) {
+          selectedFiles.push(file);
+        }
+      });
+
+      fileList.innerHTML = '';
+      fileMap.clear();
+
+      selectedFiles.forEach((file, idx) => {
+        const id = `file-${idx}`;
+        fileMap.set(id, file);
+        fileList.innerHTML += `
+          <label class="block">
+            <input type="checkbox" class="mr-2" data-id="${id}" checked />
+            <span class="font-medium">${file.name}</span>
+          </label>
+        `;
+      });
+    });
+
+    function selectAllFiles() {
+      document.querySelectorAll('#fileList input[type="checkbox"]').forEach(cb => {
+        cb.checked = true;
+      });
+    }
+
+    function deselectAllFiles() {
+      document.querySelectorAll('#fileList input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+      });
+    }
+
+    function showSelectedFiles() {
+      const checkboxes = document.querySelectorAll('#fileList input[type="checkbox"]');
+      const outputArea = document.getElementById('outputArea');
+      const resultBox = document.getElementById('result');
+      outputArea.value = '';
+      let promises = [];
+
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          const file = fileMap.get(cb.dataset.id);
+          if (file) {
+            const promise = new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                resolve(`--- ${file.name} ---\n${e.target.result}`);
+              };
+              reader.onerror = () => {
+                resolve(`--- ${file.name} ---\n[ERROR membaca file]`);
+              };
+              reader.readAsText(file);
+            });
+            promises.push(promise);
+          }
+        }
+      });
+
+      Promise.all(promises).then(results => {
+        outputArea.value = results.join('\n\n');
+        resultBox.classList.remove('hidden');
+      });
+    }
+
+    function copyToClipboard(id) {
+      const textarea = document.getElementById(id);
+      textarea.select();
+      textarea.setSelectionRange(0, 99999); // for mobile
+      document.execCommand("copy");
+    }
+  </script>
+
+</body>
+</html>
